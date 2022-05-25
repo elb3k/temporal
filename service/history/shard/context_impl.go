@@ -288,7 +288,9 @@ func (s *ContextImpl) getImmediateTaskMaxReadLevel() tasks.Key {
 func (s *ContextImpl) getScheduledTaskMaxReadLevel(cluster string) tasks.Key {
 	s.rLock()
 	defer s.rUnlock()
-	return tasks.Key{FireTime: s.scheduledTaskMaxReadLevelMap[cluster]}
+
+	fireTime := s.scheduledTaskMaxReadLevelMap[cluster]
+	return tasks.Key{FireTime: timestamp.UnixOrZeroTime(fireTime.UnixNano())}
 }
 
 func (s *ContextImpl) updateScheduledTaskMaxReadLevel(cluster string) tasks.Key {
@@ -302,7 +304,8 @@ func (s *ContextImpl) updateScheduledTaskMaxReadLevel(cluster string) tasks.Key 
 
 	newMaxReadLevel := currentTime.Add(s.config.TimerProcessorMaxTimeShift()).Truncate(time.Millisecond)
 	s.scheduledTaskMaxReadLevelMap[cluster] = common.MaxTime(s.scheduledTaskMaxReadLevelMap[cluster], newMaxReadLevel)
-	return tasks.Key{FireTime: s.scheduledTaskMaxReadLevelMap[cluster]}
+	fireTime := s.scheduledTaskMaxReadLevelMap[cluster]
+	return tasks.Key{FireTime: timestamp.UnixOrZeroTime(fireTime.UnixNano())}
 }
 
 func (s *ContextImpl) GetQueueAckLevel(category tasks.Category) tasks.Key {
@@ -317,7 +320,10 @@ func (s *ContextImpl) getQueueAckLevelLocked(category tasks.Category) tasks.Key 
 		return convertPersistenceAckLevelToTaskKey(category.Type(), queueAckLevel.AckLevel)
 	}
 
-	return tasks.Key{}
+	return tasks.Key{
+		FireTime: time.Unix(0, 0),
+		TaskID:   0,
+	}
 }
 
 func (s *ContextImpl) UpdateQueueAckLevel(
